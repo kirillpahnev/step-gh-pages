@@ -1,8 +1,6 @@
-box: wercker/default
+box: alpine
+
 build:
-    steps:
-        - shellcheck:
-            files: run.sh
-        - script:
-            name: prepare output
-            code: rm -rf $WERCKER_ROOT/.git
+  steps:
+    - internal/publish-step:
+        owner: pahnev
