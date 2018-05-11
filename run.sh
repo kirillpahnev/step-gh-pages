@@ -1,65 +1,60 @@
 #!/bin/sh
 
-# confirm environment variables
 if [ ! -n "$WERCKER_GH_PAGES_TOKEN" ]; then
-  fail "missing option \"token\", aborting"
+  fail "Missing 'token' for pushing to Github"
 fi
 
-# use repo option or guess from git info
 if [ -n "$WERCKER_GH_PAGES_REPO" ]; then
   repo="$WERCKER_GH_PAGES_REPO"
-elif [ 'github.com' = "$WERCKER_GIT_DOMAIN" ]; then
+elif [ 'github.com' == "$WERCKER_GIT_DOMAIN" ]; then
   repo="$WERCKER_GIT_OWNER/$WERCKER_GIT_REPOSITORY"
 else
-  fail "missing option \"repo\", aborting"
+  fail "Missing 'repo' for distinguishing target"
 fi
 
-info "using github repo \"$repo\""
+info "Using '$repo'"
 
-# remote path
-remote="https://$WERCKER_GH_PAGES_TOKEN@github.com/$repo.git"
-
-# if directory provided, cd to it
-if [ -n "$WERCKER_GH_PAGES_BASEDIR" ]; then
-  if [ -d "$WERCKER_GH_PAGES_BASEDIR" ]; then
-    cd "$WERCKER_GH_PAGES_BASEDIR"
-  else
-    fail "\"basedir\" does not exist, was the build step performed?"
-  fi
-fi
-
-# remove existing commit history
-rm -rf .git
-
-# generate cname file
-if [ -n "$WERCKER_GH_PAGES_DOMAIN" ]; then
-  echo "$WERCKER_GH_PAGES_DOMAIN" > CNAME
-fi
-
-# allow overriding the branch, e.g. for use with a staging env
 if [ -n "$WERCKER_GH_PAGES_BRANCH" ]; then
   branch="$WERCKER_GH_PAGES_BRANCH"
+elif [[ "$repo" =~ $WERCKER_GIT_OWNER\/$WERCKER_GIT_OWNER\.github\.(io|com)$ ]]; then
+  repobranch="master"
 else
   branch="gh-pages"
-  echo "$repo" | grep -qE "$WERCKER_GIT_OWNER\/$WERCKER_GIT_OWNER\.github\.(io|com)"
-  if [ $? -eq 0 ]; then
-      branch="master"
-  fi
 fi
 
-# init repository
-git init
+info "Using branch '$branch'"
 
+if [ -d "$WERCKER_GH_PAGES_BASEDIR" ]; then
+  info "Using '$WERCKER_GH_PAGES_BASEDIR' as root dir instead of git root"
+  cd $WERCKER_GH_PAGES_BASEDIR
+fi
+
+if [ -n $WERCKER_GH_PAGES_DOMAIN ]; then
+  info "Generating CNAME for '$WERCKER_GH_PAGES_DOMAIN'"
+  echo $WERCKER_GH_PAGES_DOMAIN > CNAME
+fi
+
+remote="https://$WERCKER_GH_PAGES_TOKEN@github.com/$repo.git"
+
+if ! type "git" > /dev/null; then
+  apt-get update
+  apt-get install -y git-core
+fi
+
+rm -rf .git
+git init
 git config user.email "pleasemailus@wercker.com"
 git config user.name "werckerbot"
+git remote add origin "$remote"
+git fetch origin
+git branch --track master origin/master
+git add -A
+git commit -m "Deploy from $WERCKER_STARTED_BY"
+result="$(git push $remote master:$branch)"
 
-git add .
-git commit -m "deploy from $WERCKER_STARTED_BY"
-result=$(git push -f "$remote" master:"$branch" 2> /dev/null)
-
-if [ $? -ne 0 ]; then
+if [[ $? -ne 0 ]]; then
   warning "$result"
-  fail "failed pushing to github pages"
+  fail "Failed deploying to Github Pages"
 else
-  success "pushed to github pages"
+  success "Deployed to Github Pages"
 fi
