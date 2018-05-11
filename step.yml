@@ -1,0 +1,23 @@
+name: gh-pages
+version: 0.2.4
+summary: A step to deploy to Github Pages
+tags:
+  - github
+  - pages
+  - deploy
+properties:
+- name: basedir
+  type: string
+  required: false
+- name: branch
+  type: string
+  required: false
+- name: domain
+  type: string
+  required: false
+- name: repo
+  type: string
+  required: false
+- name: token
+  type: string
+  required: true
