@@ -1,5 +1,5 @@
 name: gh-pages
-version: 0.2.4
+version: 0.3.1
 summary: A step to deploy to Github Pages
 tags:
   - github
